@@ -6,6 +6,7 @@ This repository contains common libraries being used by other Azizi projects. Th
  * common - Common CSS and JavaScrip files
  * customMessageBox - Custom JavaScript library for displaying popup boxes
  * dbmodules - PHP Library for handling database transactions
+ * excelParser - A PHP Excel processing library
  * mod_general - PHP Library containg commonly used custom PHP functions
  * mod_messages - A collection of custom PHP error messages and their error codes
  * mod_spreadsheet - A PHP library for Spreadsheet processing
