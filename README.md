@@ -8,6 +8,7 @@ This repository contains common libraries being used by other Azizi projects. Th
  * dbmodules - PHP Library for handling database transactions
  * mod_general - PHP Library containg commonly used custom PHP functions
  * mod_messages - A collection of custom PHP error messages and their error codes
+ * mod_spreadsheet - A PHP library for Spreadsheet processing
  * notification - Custom JavaScript library for displaying notifications on the top right corner of HTML pages
 
 ### License
