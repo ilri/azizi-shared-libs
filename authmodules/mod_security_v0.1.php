@@ -193,7 +193,7 @@ class Security {
              
              /*********************/
              $entries = ldap_get_entries($ldapConnection, $ldapSr);
-             $this->dBase->CreateLogEntry(print_r($entries, true), "fatal");
+             $this->dBase->CreateLogEntry(print_r($entries, true), "debug");
              /*********************/
              
              if (!$ldapSr) {
@@ -208,7 +208,7 @@ class Security {
              }
              
              $ldapAttributes = ldap_get_attributes($ldapConnection, $entry1);
-             $this->dBase->CreateLogEntry(print_r($ldapAttributes, true), "fatal");
+             $this->dBase->CreateLogEntry(print_r($ldapAttributes, true), "debug");
              $_SESSION['surname'] = $ldapAttributes['sn'][0];
              $_SESSION['onames'] = $ldapAttributes['givenName'][0];
              if(!isset($_SESSION['user_type'])){
