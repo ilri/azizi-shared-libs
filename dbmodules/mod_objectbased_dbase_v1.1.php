@@ -523,17 +523,21 @@ class DBase{
     *
     * @param   string   $dbase        The name of the database that we are going to add the samples to
     * @param   string   $projectName  The name of the project that we are going to add
+    * @param   integer  $fieldIdLink   The integer which acts as an id link while linking custom values in modules
     * @return  mixed    Return a string with the error message in case an error occurs, else it returns the inserted sample id.
     * @since   v0.8
     */
-   public function AddProject($dbase, $projectName) {
+   public function AddProject($dbase, $projectName, $fieldIdLink = 1) {
       if($projectName=='' || !isset($projectName)) return 'Cannot add an empty project!!';
       //check if the sample type is already defined
-      $projectId = $this->GetSingleRowValue("$dbase.modules_custom_values", 'val_id', 'value', $projectName);
-      if($projectId == -2) return $this->lastError;
-      elseif(!is_null($projectId)) return $projectId;  //the organism is already added to the database
+      $this->query = "select val_id from $dbase.modules_custom_values where value = :value and field_id_link = :field_id_link";
+      $vals = array('value' => $projectName, 'field_id_link' => $fieldIdLink);
+      $result = $this->ExecuteQuery($this->query, $vals);
+      if($result == 1) return $this->lastError;
+      elseif(count($result) != 0) return $result[0]['val_id'];  //the project is already added to the database
 
-      $res = $this->UpdateRecords("insert into $dbase.modules_custom_values(value, field_id_link) values(:project, :field_id_link)", array('project' => $projectName, 'field_id_link' => 1));
+
+      $res = $this->UpdateRecords("insert into $dbase.modules_custom_values(value, field_id_link) values(:value, :field_id_link)", $vals);
       if($res == 1) return $this->lastError;
       else return $this->dbcon->lastInsertId();
    }
