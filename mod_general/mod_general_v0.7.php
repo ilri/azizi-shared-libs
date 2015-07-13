@@ -440,7 +440,7 @@ class GeneralTasks{
       $pathInfo = pathinfo($path2image);
       $tempImage = "$destination/{$pathInfo['filename']}_$extension.{$pathInfo['extension']}";
       //copy the original image to a temp location
-      $this->CreateDirIfNotExists($destination);
+      GeneralTasks::CreateDirIfNotExists($destination);
       if(!copy($path2image, $tempImage)) return "There was an error while creating an image in the destination folder.";
 
      // load image and get image size
