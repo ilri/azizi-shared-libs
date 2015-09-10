@@ -61,7 +61,7 @@ var Common = {
           if(settings.matchByName) sel = (selected == tmp.name) ? 'selected' : '';
           else sel = (selected == valId) ? 'selected' : '';
 			if(valId == 0 && settings.initValue != undefined) content += "<option value='0' "+sel+">"+settings.initValue;
-          else content += "<option value="+valId+" "+sel+">"+tmp.name;
+          else content += "<option value='"+valId+"' "+sel+">"+tmp.name;
 		});
 		content += "</select>";
 		return content;

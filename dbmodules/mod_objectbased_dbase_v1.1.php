@@ -49,6 +49,11 @@ class DBase{
    public $lastError;
 
    /**
+    * @var  array    An array storing the last error codes from the last failed SQL query
+    */
+   public $lastErrorCodes;
+
+   /**
     * @var string    A mysql query to be executed
     */
    public  $dbStmt;
@@ -262,21 +267,21 @@ class DBase{
 //      echo '<pre> ***'. $query . print_r($query_vars, true) .'</pre>';
       $this->dbStmt = $this->dbcon->prepare($query);
       if(!$this->dbStmt->execute($query_vars)){
-         $err1 = $this->dbStmt->errorInfo();
-         if($err1[0] == 'HY093'){
+         $this->lastErrorCodes = $this->dbStmt->errorInfo();
+         if($this->lastErrorCodes[0] == 'HY093'){
             $this->CreateLogEntry("Improper bound data types.\nStmt: $query\nVars:". print_r($query_vars, true), 'fatal');
             $this->lastError = "There was an error while fetching data from the database.";
             return 1;
          }
          else{
-            $this->CreateLogEntry("Error while executing a db statement.\nVars:". print_r($query_vars, true) ."\nError Log:\n". print_r($err1, true), 'fatal', true);
+            $this->CreateLogEntry("Error while executing a db statement.\nVars:". print_r($query_vars, true) ."\nError Log:\n". print_r($this->lastErrorCodes, true), 'fatal', true);
             $this->lastError = "There was an error while fetching data from the database.";
             return 1;
          }
       }
       $err = $this->dbcon->errorInfo();
       if($err[0] != 0){
-         $this->CreateLogEntry("Error while fetching data from the db.\n$err1[2]", 'fatal', true, '', '', true);
+         $this->CreateLogEntry("Error while fetching data from the db.\n".$this->lastErrorCodes[2], 'fatal', true, '', '', true);
          $this->lastError = "There was an error while fetching data from the database.";
          return 1;
       }
@@ -523,17 +528,21 @@ class DBase{
     *
     * @param   string   $dbase        The name of the database that we are going to add the samples to
     * @param   string   $projectName  The name of the project that we are going to add
+    * @param   integer  $fieldIdLink   The integer which acts as an id link while linking custom values in modules
     * @return  mixed    Return a string with the error message in case an error occurs, else it returns the inserted sample id.
     * @since   v0.8
     */
-   public function AddProject($dbase, $projectName) {
+   public function AddProject($dbase, $projectName, $fieldIdLink = 1) {
       if($projectName=='' || !isset($projectName)) return 'Cannot add an empty project!!';
       //check if the sample type is already defined
-      $projectId = $this->GetSingleRowValue("$dbase.modules_custom_values", 'val_id', 'value', $projectName);
-      if($projectId == -2) return $this->lastError;
-      elseif(!is_null($projectId)) return $projectId;  //the organism is already added to the database
+      $this->query = "select val_id from $dbase.modules_custom_values where value = :value and field_id_link = :field_id_link";
+      $vals = array('value' => $projectName, 'field_id_link' => $fieldIdLink);
+      $result = $this->ExecuteQuery($this->query, $vals);
+      if($result == 1) return $this->lastError;
+      elseif(count($result) != 0) return $result[0]['val_id'];  //the project is already added to the database
 
-      $res = $this->UpdateRecords("insert into $dbase.modules_custom_values(value, field_id_link) values(:project, :field_id_link)", array('project' => $projectName, 'field_id_link' => 1));
+
+      $res = $this->UpdateRecords("insert into $dbase.modules_custom_values(value, field_id_link) values(:value, :field_id_link)", $vals);
       if($res == 1) return $this->lastError;
       else return $this->dbcon->lastInsertId();
    }
