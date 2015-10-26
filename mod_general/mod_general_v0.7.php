@@ -438,7 +438,8 @@ class GeneralTasks{
     */
    static public function CreateThumbnail($path2image, $destination, $thumbWidth, $extension = ''){
       $pathInfo = pathinfo($path2image);
-      $tempImage = "$destination/{$pathInfo['filename']}_$extension.{$pathInfo['extension']}";
+      $extension = ($extension == '') ? '' : "_$extension";
+      $tempImage = "$destination/{$pathInfo['filename']}$extension.{$pathInfo['extension']}";
       //copy the original image to a temp location
       GeneralTasks::CreateDirIfNotExists($destination);
       if(!copy($path2image, $tempImage)) return "There was an error while creating an image in the destination folder.";
