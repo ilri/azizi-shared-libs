@@ -25,14 +25,14 @@ global $dbcon, $config;
    else {$use_config=$config;}
 //   echo '<pre>'.print_r($dbcon, true).'</pre>';
 
-	$dbcon = mysql_connect($use_config["dbloc"], $use_config["user"], $use_config["pass"]);
+	$dbcon = mysqli_connect($use_config["dbloc"], $use_config["user"], $use_config["pass"]);
    if(!$dbcon){
       LogError(); //'Cannot connect to the database.'
       exit(ErrorPage('Cannot connect to the database.'));
    }
-	$results=mysql_query("SET NAMES 'utf8'", $dbcon) or exit(ErrorPage('error while setting charset '. mysql_error()));
-	$results=mysql_query("SET CHARACTER SET 'utf8'", $dbcon) or exit(ErrorPage('error while setting charset '. mysql_error()));
-	if(!mysql_select_db($use_config['dbase'],$dbcon)){
+	$results=mysqli_query($dbcon, "SET NAMES 'utf8'") or exit(ErrorPage('error while setting charset '. mysqli_error($dbcon)));
+	$results=mysqli_query($dbcon, "SET CHARACTER SET 'utf8'") or exit(ErrorPage('error while setting charset '. mysqli_error($dbcon)));
+	if(!mysqli_select_db($use_config['dbase'],$dbcon)){
       LogError();
       exit(ErrorPage('Error while selecting the database.'));
    }
@@ -53,13 +53,13 @@ global $dbcon, $config;
    if(isset($spec_conf)) $use_config=$spec_conf;
    else $use_config=$config;
 
-	$dbcon = mysql_connect($use_config["dbloc"], $use_config["user"], $use_config["pass"]);
-   if(!$dbcon){
+	$dbcon = mysqli_connect($use_config["dbloc"], $use_config["user"], $use_config["pass"]);
+   if(is_null($dbcon)){
       LogError();
       return 'Cannot connect to the database.';
    }
-	//$results=mysql_query("SET NAMES 'utf8'", $dbcon) or exit(ErrorPage('error while setting charset '. mysql_error()));
-	if(!mysql_select_db($use_config['dbase'],$dbcon)){
+   $res = mysqli_select_db($dbcon, $use_config['dbase']);
+	if(!$res){
       LogError();
       return 'Error while selecting the database.';
    }
@@ -77,17 +77,17 @@ function ReopenConnection($type){
 global $dbcon, $config;
 	$errMssg='';
 //	echo '<pre>'.print_r($config, true).'</pre>';
-	$dbcon = mysql_connect($config["dbloc"], $config["user"], $config["pass"]);
+	$dbcon = mysqli_connect($config["dbloc"], $config["user"], $config["pass"]);
 	if(!$dbcon){
       LogError();
       $errMssg='Error! Cannot connect to the database.<br />Please contact your system administrator.';
    }
 	else{
-		if(!mysql_query("SET NAMES 'utf8'", $dbcon)){
+		if(!mysqli_query($dbcon, "SET NAMES 'utf8'")){
          LogError(); $errMssg='Error while setting charset.<br />Please contact your system administrator.';
       }
 		else{
-         if(!mysql_select_db($config['dbase'],$dbcon)){
+         if(!mysqli_select_db($config['dbase'],$dbcon)){
             LogError(); $errMssg='Error while selecting the database.<br />Please contact your system administrator.';
          }
       }
@@ -109,7 +109,7 @@ function StartingSession(){
 function close_session(){
 global $dbcon;
 	if($dbcon==NULL) return;
-	return mysql_close($dbcon);
+	return mysqli_close($dbcon);
 }
 //================================================================================================================================
 
@@ -126,20 +126,20 @@ global $dbcon, $config, $query, $timeout, $pageref;
 //    echo "Reading the session info: $sid <br />";
 	//check that the session is not timed out, if it is just die
    //LogError(print_r($config, true));
- 	$query = "SELECT data FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysql_real_escape_string($sid)."'";
+ 	$query = "SELECT data FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysqli_real_escape_string($sid)."'";
  	$referrer=basename($_SERVER['SCRIPT_NAME']);
-	$result = mysql_query($query, $dbcon);
+	$result = mysqli_query($dbcon, $query);
 	if(!$result){
       LogError(); exit(ErrorPage('Cannot fetch data from the database.'));
    }
-	if(mysql_num_rows($result) == 1) {
-		list($data) = mysql_fetch_array($result);
+	if(mysqli_num_rows($result) == 1) {
+		list($data) = mysqli_fetch_array($result);
 		//check that the user session time aint expired, if it has log the user out.
-		$query = "SELECT updated_at FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysql_real_escape_string($sid)."'";
-		$result=mysql_query($query, $dbcon);
+		$query = "SELECT updated_at FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysqli_real_escape_string($sid)."'";
+		$result=mysqli_query($dbcon, $query);
       if(!$result) LogError();
-		if(mysql_num_rows($result)==1){
-			list($olTime) = mysql_fetch_array($result); $time=date('Y-m-d H:i:s');
+		if(mysqli_num_rows($result)==1){
+			list($olTime) = mysqli_fetch_array($result); $time=date('Y-m-d H:i:s');
 			$format="%Y-%m-%d-%H-%M-%S";
 			//echo strftime($format, strtotime($olTime))." $olTime <br>";
 			$olTime=explode('-',strftime($format, strtotime($olTime)));
@@ -161,7 +161,7 @@ global $dbcon, $config, $query, $timeout, $pageref;
          else  exit(ErrorPage("You were inactive for $hrs and $mins minutes and you have been logged out.<br />Please login in again."));
 		}
 	}
-	elseif(mysql_num_rows($result)==0){
+	elseif(mysqli_num_rows($result)==0){
 		//die('Cant find session data');
 		return '';
 	}
@@ -177,23 +177,23 @@ global $dbcon, $config, $query;
 //   echo '<pre>'.print_r($dbcon, true).'</pre>';
 	if($data=='' || !isset($data)) return ;
    if(!$dbcon) return;
-//   $result=mysql_query("SET AUTOCOMMIT=1", $dbcon);
+//   $result=mysqli_query("SET AUTOCOMMIT=1", $dbcon);
 //	if(!$result){LogError(); die();}
 	//LogError(print_r($_SESSION));
  	//also ensure that incase the session_id is the same and bt the incoming data differs frm the data in the dbase--coming from the same computer
    $time=date('Y-m-d H:i:s');
-   //$query="SELECT * FROM ".$config['session_dbase'].".sessions WHERE STRCMP(session_id, BINARY '$sid')=0 AND STRCMP(data, BINARY '".mysql_real_escape_string($data)."')<>0";
+   //$query="SELECT * FROM ".$config['session_dbase'].".sessions WHERE STRCMP(session_id, BINARY '$sid')=0 AND STRCMP(data, BINARY '".mysqli_real_escape_string($data)."')<>0";
    //echo "$query<br>";
    //$res=GetQueryValues($query);
 //   echo '<pre>'.print_r($dbcon, true).'</pre>';
-	$query = "INSERT INTO ".$config['session_dbase'].".sessions(session_id, data, updated_at) VALUES ('".mysql_real_escape_string($sid)."', '".mysql_real_escape_string($data)."','$time')";
-	$result = mysql_query($query, $dbcon);
-   mysql_query("COMMIT", $dbcon);
+	$query = "INSERT INTO ".$config['session_dbase'].".sessions(session_id, data, updated_at) VALUES ('".mysqli_real_escape_string($sid)."', '".mysqli_real_escape_string($data)."','$time')";
+	$result = mysqli_query($dbcon, $query);
+   mysqli_query($dbcon, "COMMIT");
    //LogError($query);
 //   echo "Writing the session data: $query<br>";
-//   echo 'Affected Rows: '.mysql_affected_rows($dbcon).'<br />';
+//   echo 'Affected Rows: '.mysqli_affected_rows($dbcon).'<br />';
 	if(!$result){LogError(); die();}
-	return mysql_affected_rows($dbcon);
+	return mysqli_affected_rows($dbcon);
 }
 //================================================================================================================================
 
@@ -205,21 +205,21 @@ global $dbcon, $config, $query;
  */
 function destroy_session($sid) {
 global $dbcon, $config;
-   $query = "DELETE FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysql_real_escape_string($sid)."'";
+   $query = "DELETE FROM ".$config['session_dbase'].".sessions WHERE session_id='".mysqli_real_escape_string($sid)."'";
  	//echo $query.'<br>';
-	$result = mysql_query($query, $dbcon);
+	$result = mysqli_query($dbcon, $query);
 	$_SESSION = array();
 //   echo "Destroying the session: $query<br />";
-	return mysql_affected_rows($dbcon);
+	return mysqli_affected_rows($dbcon);
 }
 //================================================================================================================================
 
 function clean_session($expire) {
 	global $dbcon;
  	$query = "DELETE FROM ".$config['session_dbase'].".sessions WHERE DATE_ADD(updated_at, INTERVAL ".(int) $expire." SECOND) < NOW()";
-	$result = mysql_query($query, $dbcon);
+	$result = mysqli_query($dbcon, $query);
    echo "Cleaning the session info: $query<br />";
-	return mysql_affected_rows($dbcon);
+	return mysqli_affected_rows($dbcon);
 }
 //================================================================================================================================
 
@@ -238,7 +238,7 @@ session_set_save_handler('open_session', 'close_session', 'read_session', 'write
 function ConfirmUser($username, $password, $reqType='normal'){
 //check if the user is ok and return the rights level, if ok initialize the dbcon and initialise sessions
 global $dbcon, $query, $paging, $psswdSettings, $config;
-   $username = mysql_real_escape_string($username); $password=mysql_real_escape_string($password);
+   $username = mysqli_real_escape_string($username); $password=mysqli_real_escape_string($password);
    if($psswdSettings['useSalt']){
       $query = "SELECT * FROM {$config['session_dbase']}.users WHERE login='$username' AND psswd=sha1(concat(salt,'$password')) AND allowed='1' LOCK IN SHARE MODE";
    }
@@ -247,7 +247,7 @@ global $dbcon, $query, $paging, $psswdSettings, $config;
    }
 //   echo '<pre>'. print_r($_POST, true) .'</pre>';
 //   echo $query.'<br>';
-   $result = mysql_query($query, $dbcon);
+   $result = mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); LogOut();
       if($reqType=='normal') exit(ErrorPage("Invalid query."));
@@ -257,12 +257,12 @@ global $dbcon, $query, $paging, $psswdSettings, $config;
       .'If your log in details are correct, you may not have sufficient rights to access the system.<br> '
       .'Please contact the System Administrator.</i>';
 
-   if(mysql_num_rows($result) == 0){
+   if(mysqli_num_rows($result) == 0){
       LogError("Login attempt for the user $username failed."); LogOut();
       if($reqType=='normal') exit(ErrorPage($message));
       else return -1;
    }
-   $row=mysql_fetch_array($result);
+   $row=mysqli_fetch_array($result);
    //echo $paging;
    if($paging=='login' || $paging=='logout' || $paging=='change'){}
    else{
@@ -355,12 +355,12 @@ global $dbcon, $query;
 	$query="$sel $from $whea $grp $ord LOCK IN SHARE MODE";
 
 	//LogError($query);
-	$result=mysql_query($query, $dbcon);
+	$result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return "There was an error while fetching the values from the tables.";
    }
    $results=array();
-   while($row=mysql_fetch_row($result)){
+   while($row=mysqli_fetch_row($result)){
    	//echo implode(' ',$row).'<br>';
     	array_push($results,$row);
    }
@@ -394,12 +394,12 @@ global $dbcon, $query;
 
    $query="SELECT $col FROM $table $criteria $ordering LOCK IN SHARE MODE";
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return "There was an error while fetching the values from the $table table.";
    }
    $results=array();
-   while($row=mysql_fetch_array($result)) array_push($results,$row[0]);
+   while($row=mysqli_fetch_array($result)) array_push($results,$row[0]);
    return $results;
 }
 //================================================================================================================================
@@ -423,14 +423,14 @@ global $dbcon, $query;
 		}
 	}
 	$query="SELECT ".implode(',',$cols)." FROM $table $criteria LOCK IN SHARE MODE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    //LogError('Debugging');
    if(!$result){
       LogError(); return "There was an error while fetching the values from the $table table.";
    }
-   if(mysql_num_rows($result)==0) return array();
+   if(mysqli_num_rows($result)==0) return array();
 	$results=array();
-   while($row=mysql_fetch_array($result, $fetchMode)) array_push($results,$row);
+   while($row=mysqli_fetch_array($result, $fetchMode)) array_push($results,$row);
    return $results;
 }
 //================================================================================================================================
@@ -452,14 +452,14 @@ global $dbcon, $query;
 		}
 	}
 	$query="SELECT ".implode(',',$cols)." FROM $table $criteria LOCK IN SHARE MODE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    //LogError('Debugging');
    if(!$result){
       LogError(); return "There was an error while fetching the values from the $table table.";
    }
-   if(mysql_num_rows($result)==0) return array();
+   if(mysqli_num_rows($result)==0) return array();
 	$results=array();
-   while($row=mysql_fetch_array($result, $fetchMode)) array_push($results,$row);
+   while($row=mysqli_fetch_array($result, $fetchMode)) array_push($results,$row);
    return $results;
 }
 //================================================================================================================================
@@ -476,10 +476,10 @@ global $dbcon, $query, $Dbg;
    $query = $queryed;
 //   echo '<pre>'.print_r($dbcon, true).'</pre>';
 //   echo '<pre>'.$query.'</pre>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){LogError(); return "There was an error while fetching the values from the database.";}
    $results=array();
-   while($row=mysql_fetch_array($result, $resType)) array_push($results,$row);
+   while($row=mysqli_fetch_array($result, $resType)) array_push($results,$row);
    return $results;
 }
 //================================================================================================================================
@@ -512,11 +512,11 @@ global $dbcon, $query;
    }
    //lock the table to prevent concurrent reads and updates
    $query="SELECT ".implode(',',$cols)." FROM $table FOR UPDATE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){LogError(); return "There was an error while fetching data from the database."; }
 
    $query="UPDATE $table SET $cols_vals WHERE $condition";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
 //	LogError('Debugging:');
    if(!$result){
       LogError(); return "There was an error while updating the database.";
@@ -537,7 +537,7 @@ function InsertValues($table, $cols, $colvals){
 global $dbcon, $query;
 	//lock the table to prevent concurrent reads and updates
    $query="SELECT ".implode(',',$cols)." FROM $table FOR UPDATE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if($result===false){
       LogError(); return 'There was an error while fetching data from the database.';
    }
@@ -545,7 +545,7 @@ global $dbcon, $query;
 	$col_vals="'".implode("', '",$colvals)."'";
    $query="INSERT INTO $table(".implode(", ",$cols).") VALUES($col_vals)";
    //LogError('Debugging:');
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if($result===false){
       LogError(); return "There was an error while updating the database.";
    }
@@ -560,7 +560,7 @@ function InsertOnDuplicateUpdate($table, $cols, $colvals){
 global $dbcon, $query;
 	//lock the table to prevent concurrent reads and updates
    $query="SELECT ".implode(',',$cols)." FROM $table FOR UPDATE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if($result===false){
       LogError(); return 'There was an error while fetching data from the database.';
    }
@@ -578,7 +578,7 @@ global $dbcon, $query;
    $query="INSERT INTO $table(".implode(", ",$cols).") VALUES($col_vals) ON DUPLICATE KEY UPDATE $onUpdate";
    //LogError('Debugging');
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if($result===false){
       LogError(); return "There was an error while updating the database.";
    }
@@ -593,7 +593,7 @@ function InsertMultipleValues($table, $cols, $colvals){
 global $dbcon, $query;
    //lock the table to prevent concurrent reads and updates
    $query="SELECT ".implode(',',$cols)." FROM $table FOR UPDATE";
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return 'There was an error while fetching data from the database.';
    }
@@ -606,7 +606,7 @@ global $dbcon, $query;
    }
    $query="INSERT INTO $table(".implode(", ",$cols).") VALUES $vals";
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return "There was an error while updating the database.";}
    else return 0;
@@ -640,11 +640,11 @@ function LastRowValues($table,$ordercol,$cols){
 global $dbcon, $query;
    $query="SELECT ".implode(',',$cols)." FROM $table ORDER BY $ordercol DESC LOCK IN SHARE MODE";
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return "There was an error while updating the database.";
    }
-   while($row=mysql_fetch_array($result)) break;
+   while($row=mysqli_fetch_array($result)) break;
    if(!is_array($row))return "There is no data in the $table table.";
    return $row;
 }
@@ -670,13 +670,13 @@ global $dbcon, $query;
 	}
 	//echo $query.'<br>';
 	//lock the table to prevent concurrent reads and updates
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return 'There was an error while fetching data from the database.';
    }
    $query="DELETE FROM $table WHERE $con";
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
 	//LogError('Debugging: ');
    if(!$result){
       LogError(); return "There was an error while updating the database.";
@@ -706,11 +706,11 @@ global $dbcon, $query;
 	}
 	else $query="SELECT $toreturn FROM $table WHERE $col $operand '$colval' LOCK IN SHARE MODE";
    //echo $query.'<br>';
-   $result=mysql_query($query, $dbcon);
+   $result=mysqli_query($dbcon, $query);
    if(!$result){
       LogError(); return -2;
    }
-   $row=mysql_fetch_array($result);
+   $row=mysqli_fetch_array($result);
    return $row[0];        //this is being returned as a string even if its an integer
 }
 //================================================================================================================================
@@ -718,24 +718,24 @@ global $dbcon, $query;
 //starts a transaction
 function StartTrans(){
 global $dbcon;
-   $result=mysql_query("SET AUTOCOMMIT=0", $dbcon);
-   $result=mysql_query("START TRANSACTION", $dbcon);
+   $result=mysqli_query($dbcon, "SET AUTOCOMMIT=0");
+   $result=mysqli_query($dbcon, "START TRANSACTION");
 }
 //================================================================================================================================
 
 //commits a transaction after successfull completion of a task
 function CommitTrans(){
 global $dbcon;
-	$result=mysql_query("COMMIT", $dbcon);
-   $result=mysql_query("SET AUTOCOMMIT=1", $dbcon);
+	$result=mysqli_query($dbcon, "COMMIT");
+   $result=mysqli_query($dbcon, "SET AUTOCOMMIT=1");
 }
 //================================================================================================================================
 
 //rolls back a transaction
 function RollBackTrans(){
 global $dbcon;
-	$result=mysql_query("ROLLBACK", $dbcon);
-   $result=mysql_query("SET AUTOCOMMIT=1", $dbcon);
+	$result=mysqli_query($dbcon, "ROLLBACK");
+   $result=mysqli_query($dbcon, "SET AUTOCOMMIT=1");
 }
 //================================================================================================================================
 
@@ -749,7 +749,7 @@ global $dbcon;
  *                            If =='Debugging', means just log the last dbase query that was executed successfully
  */
 function LogError($error='', $file=''){
-global $errHandle, $query;
+global $errHandle, $query, $dbcon;
 
    if(is_array($file)) $errHandle=$file;
 //   echo "Error: $error<br />";
@@ -782,7 +782,7 @@ global $errHandle, $query;
    $fd=fopen($errHandle['logFile'], 'a');
    if(!$fd) return -1;
    $errorString=date('m.d.y H:i:s: ');
-   $err=($error=='')?mysql_errno()." ".mysql_error():$error;
+   $err=($error=='')?mysqli_errno($dbcon)." ".mysqli_error($dbcon):$error;
 
    if(preg_match('/Debugging/',$error)) fputs($fd, "{$errorString}['Debug'] $query\n");
    elseif($error=='') fputs($fd, "{$errorString}['Error'] $err $query\n");

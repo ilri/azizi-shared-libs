@@ -264,7 +264,7 @@ class DBase{
       if($query == '') $query = $this->query;
       else $this->query = $query;
 
-//      echo '<pre> ***'. $query . print_r($query_vars, true) .'</pre>';
+      $this->CreateLogEntry("Executing $query...", 'debug');
       $this->dbStmt = $this->dbcon->prepare($query);
       if(!$this->dbStmt->execute($query_vars)){
          $this->lastErrorCodes = $this->dbStmt->errorInfo();
