@@ -172,6 +172,9 @@ class Security {
     * This function tries to authenticate using CGIAR's Active Directory
     * Authentication is done by trying to bind as the user. If binding fails
     * then the user is not authenticated
+    * Users are authenticated on both ILRI sub-domain & CGIAR root domain
+    * because some users' accounts have already been moved to the root DC
+    * as part of ICT's O365 initiative
     *
     * @param type $user Username to be authenticated
     * @param type $pass Unencrypted password
@@ -187,7 +190,14 @@ class Security {
        else {
           ldap_set_option($ldapConnection, LDAP_OPT_REFERRALS, 0);
           ldap_set_option($ldapConnection, LDAP_OPT_PROTOCOL_VERSION, 3);
-          $ldapBind = ldap_bind($ldapConnection, "$user@ilri.cgiarad.org", $pass);
+
+          $ldapBind = false;
+          if (ldap_bind($ldapConnection, "$user@ilri.cgiarad.org", $pass)){
+            $ldapBind = true;
+          } elseif (ldap_bind($ldapConnection, "$user@cgiarad.org", $pass)){
+            $ldapBind = true;
+          }
+
           if ($ldapBind) {
              $ldapSr = ldap_search($ldapConnection, Config::$config['ldapSSpace'], "(sAMAccountName=$user)", array('sn', 'givenName', 'title'));
 
